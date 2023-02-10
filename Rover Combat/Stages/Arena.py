@@ -15,6 +15,7 @@ class Arena:
         self.enemy_lastnames = ["The Brave", "The Runt", "The Coward", "The Fighter", "The Lost"]
         self.winnings_xp = 0
         self.winnings_credits = 0
+        self.winnings_items = []
 
     def failedInput(self):
         print("Unrecognised Command! Please Try Again!")
@@ -97,8 +98,10 @@ class Arena:
         newArena = Combat.Combat(self.enemyRover, self.playerRover)
         winnings = newArena.startup()
         self.enemyRover = None
+
         self.winnings_credits = winnings[0]
         self.winnings_xp = winnings[1]
+        self.wininngs_items = winnings[2]
 
     def main(self):
         if not self.playerRover:

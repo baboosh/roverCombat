@@ -14,6 +14,7 @@ class Combat:
 
         self.winnings_credits = 0
         self.winnings_xp = 0
+        self.winnings_items = []
 
         self.frontDisplay = """
     /#######\.
@@ -291,25 +292,26 @@ class Combat:
         a = input()
 
     def isCoreExposed(self, rover):
+        print(" | " + rover.orientation + " |||| ORIENTATION") 
         if rover.orientation == "Forward":
             if rover.armor_slots["Front"].health != 0:
                 return False
             elif rover.weapon_slots["Front"].health != 0:
                 return False
              
-        if rover.orientation == "Left-Exposed":
+        elif rover.orientation == "Left-Exposed":
             if rover.armor_slots["Left"].health != 0:
                 return False
             elif rover.weapon_slots["Left"].health != 0:
                 return False
 
-        if rover.orientation == "Right-Exposed":
+        elif rover.orientation == "Right-Exposed":
             if rover.armor_slots["Right"].health != 0:
                 return False
             elif rover.weapon_slots["Right"].health != 0:
                 return False 
         
-        if rover.orientation == "Right-Exposed":
+        elif rover.orientation == "Right-Exposed":
             if rover.armor_slots["Right"].health != 0:
                 return False
             elif rover.weapon_slots["Right"].health != 0:
@@ -368,7 +370,7 @@ class Combat:
         self.enemyRover.orientation = "Forward"
         print("START UP!")
         self.combat_turn()
-        return [self.winnings_credits, self.winnings_xp]
+        return [self.winnings_credits, self.winnings_xp, self.winnings_items]
 
 
     def combat_turn(self):

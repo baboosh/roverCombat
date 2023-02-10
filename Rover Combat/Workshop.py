@@ -2,27 +2,32 @@ import Objects.Rover as Rover
 import Objects.Armor as Armor
 import Stages.Arena as Arena
 import Objects.Weapon as Weapon
+import Data.PlayerData as PlayerData
+import os.path
+import os
+import pickle
 import random
 
 
 class Workshop:
 
-    def __init__(self):
-        self.xp = 0
-        self.level = 1
-        self.credits = 100
-        self.rovers = []
+    def __init__(self, newPlayerData):
+
+        self.loadedPlayer = newPlayerData
+        self.xp = newPlayerData.xp
+        self.level = newPlayerData.level
+        self.credits = newPlayerData.credits
+        self.rovers = newPlayerData.rovers
+        self.selected_rover = newPlayerData.selected_rover
+        self.inventory = newPlayerData.inventory
+        self.save_name = newPlayerData.save_name
+        self.saveDirectory = "roverCombat/Rover Combat/Saves/"
+
         self.rover_cost = 100
         self.repair_cost = 10
-        self.selected_rover = None
+        self.playerData = None
+
         self.arenaObj = Arena.Arena(self.selected_rover)
-
-        self.playerData = {"credits":100,
-                            "xp": 0,
-                            "level": 1,
-                            "selected rover": None,
-                            "rovers": []}
-
 
     def failedInput(self):
         print("Unrecognised Command! Please Try Again!")
@@ -30,13 +35,102 @@ class Workshop:
     def getCreditDisplay(self):
         return str(self.credits) + "¢"
 
+    def saveGame(self):
+        self.clear_screen()
+        validFileName = False
+        while not validFileName: 
+            fileName = input("[Save Game as: ")
+            fileName = self.saveDirectory + fileName + ".pickle"
+            if os.path.isfile(fileName):
+                print("File already exists. Overwrite?")
+                print("[Y] YES  [N] NO")
+                playerInput = input()
+                if playerInput.upper() == "Y":
+                    os.remove(fileName)
+                    validFileName = True
+                else:
+                    print("Save Game Aborted.")
+                    throwAway = input()
+                    self.clear_screen()
+                    self.main()
+            else:
+                validFileName = True
+
+        self.save_name = fileName
+        self.saveGameImmediate()
+        
+        print("Game Saved.")
+        throwAway = input()
+        self.main()
+
+
+    def loadGameSelection(self):
+        print("[ ----- LOAD GAME -----  ]")
+        filesInSaves = os.listdir(self.saveDirectory)
+        saveGames = []
+        for file in filesInSaves:
+            if file.endswith(".pickle"):
+                saveGames.append(file)
+       
+        count = 1
+        for saveGame in saveGames:
+            spaces = (19 - len(saveGame.replace(".pickle",""))) * " "
+            saveRow = "| [{}] {}{}|".format(count, saveGame.replace(".pickle",""), spaces)
+            print(saveRow)
+            count += 1
+        print("|                        |")
+        print("| [A] ABORT              |")
+        print("\________________________/")
+        inputChosen = False
+        while not inputChosen:
+            playerInput = input(">")
+            if playerInput.upper() == "A":
+                inputChosen = True
+                self.clear_screen()
+                self.main()
+            elif playerInput.isdigit():
+                selectedIndex = int(playerInput) - 1
+                if selectedIndex >= 0 and selectedIndex < len(saveGames):
+                    selectedSaveGame = self.saveDirectory + saveGames[selectedIndex]
+                    with open(selectedSaveGame, "rb") as f:
+                        self.loadedPlayer = pickle.load(f)
+                    self.xp = self.loadedPlayer.xp
+                    self.level = self.loadedPlayer.level
+                    self.credits = self.loadedPlayer.credits
+                    self.rovers = self.loadedPlayer.rovers
+                    self.selected_rover = self.loadedPlayer.selected_rover
+                    self.arenaObj.playerRover = self.selected_rover
+                    self.inventory = self.loadedPlayer.inventory
+                    self.save_name = selectedSaveGame
+                    print("Loaded Save Game.")
+                    throwAway = input()
+                    self.clear_screen()
+                    self.main()
+                else:
+                    self.failedInput()
+            else:
+                self.failedInput()
+      
     def doLevelUp(self):
         xpToNextLevel = (self.level / 0.07) * 2
         if self.xp >= xpToNextLevel:
             self.xp -= xpToNextLevel
             self.level += 1
             self.doLevelUp()
-            print("! -- LEVEL UP -- !")        
+            print("! -- LEVEL UP -- !")       
+
+    def saveGameImmediate(self):
+        self.loadedPlayer.xp = self.xp
+        self.loadedPlayer.level = self.level
+        self.loadedPlayer.credits = self.credits
+        self.loadedPlayer.rovers = self.rovers
+        self.loadedPlayer.selected_rover = self.selected_rover
+        self.loadedPlayer.inventory = self.inventory
+        self.loadedPlayer.save_name = self.save_name
+
+        with open(self.save_name, 'wb') as saveGame:
+            pickle.dump(self.loadedPlayer, saveGame)
+         
 
     def getXPDisplay(self):
         xpProgress = "["
@@ -72,7 +166,7 @@ class Workshop:
         if playerInput.upper() == "Y":
             if self.credits < self.rover_cost:
                 print("ERROR: NOT ENOUGH CREDITS!")
-                a = input()
+                throwAway = input()
                 self.clear_screen()
                 self.garage()
             self.credits -= self.rover_cost
@@ -114,7 +208,7 @@ class Workshop:
         if playerInput.upper() == "R":
             if slot.health == slot.max_health:
                 print(slot.name + " is at full condition.")
-                a = input()
+                throwAway = input()
                 self.clear_screen()
                 self.viewing_slot(slotid, viewingSlots, slotDirectory)
             else:
@@ -127,7 +221,7 @@ class Workshop:
                 if playerInput.upper() == "Y":
                     if self.credits < self.repair_cost:
                         print("ERROR: NOT ENOUGH CREDITS!")
-                        a = input()
+                        throwAway = input()
                         self.clear_screen()
                         self.viewing_slot(slotid, viewingSlots, slotDirectory)
                     else:
@@ -135,7 +229,7 @@ class Workshop:
                         self.credits -= repairCost
                         slot.health = slot.max_health
                         slot.dots = {}
-                        a = input()
+                        throwAway = input()
                         self.clear_screen()
                         self.viewing_slot(slotid, viewingSlots, slotDirectory)
                 else:
@@ -211,7 +305,7 @@ class Workshop:
                     if playerInput.upper() == "Y":
                         if self.credits < repairCost:
                             print("ERROR: NOT ENOUGH CREDITS!")
-                            a = input()
+                            throwAway = input()
                             self.clear_screen()
                             self.modify_rover()
                         else:
@@ -219,7 +313,7 @@ class Workshop:
                             print(self.selected_rover.name + "'s core is fully repaired.")
                             self.selected_rover.health = self.selected_rover.max_health
                             self.selected_rover.modifiers = {}
-                            a = input()
+                            throwAway = input()
                             self.clear_screen()
                             self.modify_rover()
                     else:
@@ -237,7 +331,7 @@ class Workshop:
 
                 if len(damaged_slots) == 0:
                     print("All slots are in full condition.")
-                    a = input()
+                    throwAway = input()
                     self.clear_screen()
                     self.modify_rover()
                 else:
@@ -252,7 +346,7 @@ class Workshop:
                     if playerInput.upper() == "Y":
                         if self.credits < repairCost:
                             print("ERROR: NOT ENOUGH CREDITS!")
-                            a = input()
+                            throwAway = input()
                             self.clear_screen()
                             self.modify_rover()
                         else:
@@ -261,7 +355,7 @@ class Workshop:
                                 print(slot.name + " is fully repaired.")
                                 slot.health = slot.max_health
                                 slot.dots = {}
-                            a = input()
+                            throwAway = input()
                             self.clear_screen()
                             self.modify_rover()
                     else:
@@ -272,6 +366,7 @@ class Workshop:
         
 
     def garage(self):
+        self.saveGameImmediate()
         if not self.selected_rover:
             name = "NONE SELECTED!"
         else:
@@ -347,7 +442,6 @@ class Workshop:
 
         print(displayString)
         count = 1
-
         for rover in self.rovers:
             spaces = (19 - len(rover.name)) * " "
             roverRow = "| [{}] {}{}|".format(count, rover.name, spaces)
@@ -380,6 +474,7 @@ class Workshop:
         self.credits += self.arenaObj.winnings_credits
         self.arenaObj.winnings_xp = 0
         self.arenaObj.winnings_credits = 0
+        self.inventory.append(self.arenaObj.winnings_items)
         self.doLevelUp()
 
         self.clear_screen()
@@ -393,6 +488,7 @@ class Workshop:
         xpSpaces = (23 - int(len(self.getXPDisplay()))) * " "
         creditSpaces = (23 - int(len(self.getCreditDisplay()))) * " "
 
+        self.saveGameImmediate()
 
         displayString = ("""
  _______________________       
@@ -410,6 +506,10 @@ class Workshop:
 |                        | 
 | [A] ARENA              | 
 | [G] GARAGE             |
+|                        | 
+|                        | 
+| [S] SAVE               | 
+| [L] LOAD               |
 \________________________/
         """).format(self.getXPDisplay(), xpSpaces, self.getCreditDisplay(), creditSpaces, name, spaces)
 
@@ -420,6 +520,14 @@ class Workshop:
             if playerInput.upper() == "G":
                 inputChosen = True
                 self.clear_screen()
+                self.garage()
+            if playerInput.upper() == "S":
+                inputChosen = True
+                self.saveGame()
+                self.garage()
+            if playerInput.upper() == "L":
+                inputChosen = True
+                self.loadGameSelection()
                 self.garage()
             elif playerInput.upper() == "A":
                 inputChosen = True
@@ -435,5 +543,6 @@ class Workshop:
                 self.failedInput()
 
 if __name__ == "__main__":
-    newWorkshop = Workshop()
+    newPlayerData = PlayerData.PlayerData()
+    newWorkshop = Workshop(newPlayerData)
     newWorkshop.main()
