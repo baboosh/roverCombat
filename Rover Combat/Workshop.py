@@ -180,14 +180,14 @@ class Workshop:
             index = 0
             for slot in newRover.armor_slots:
                 newArmor = Armor.Armor()
-                newArmor.generateArmor("Medium",slot_list[index],type_count=1)
+                newArmor.generateArmor("Light",slot_list[index],type_count=1)
                 newRover.armor_slots[slot] = newArmor
                 index += 1
             
             index = 0
             for weapon in newRover.weapon_slots:
                 newWeapon = Weapon.Weapon()
-                newWeapon.generateWeapon(1,random.randint(3,8), 10, slot_list[index])
+                newWeapon.generateWeapon(1,random.randint(3,5), 8, slot_list[index])
                 newRover.weapon_slots[weapon] = newWeapon
                 index += 1
         

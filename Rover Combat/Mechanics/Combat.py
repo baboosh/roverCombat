@@ -17,7 +17,7 @@ class Combat:
         self.winnings_items = []
 
         self.frontDisplay = """
-    /#######\.
+    /#######\ 
    []       []
     |       |
     |       |
@@ -26,7 +26,7 @@ class Combat:
         """
 
         self.backDisplay = """
-    /-------\.
+    /-------\ 
    []       []
     |       |
     |       |
@@ -35,7 +35,7 @@ class Combat:
         """
         self.rightDisplay = """
       __---______---____
-    /   ---      ---    \.
+    /   ---      ---    \ 
     |                   #
     |                   #
     \___---______---____/ 
@@ -45,7 +45,7 @@ class Combat:
                 
         self.leftDisplay = """
       __---______---____
-    /   ---      ---     \.
+    /   ---      ---     \ 
     #                    |
     #                    |
     \___---______---____/ 
@@ -87,6 +87,10 @@ class Combat:
                     if dot.duration <= 0:
                         armor_slot.dots.remove(dot)
                     print(str(dot.duration) + " TURNS LEFT.")
+            for weapon_slot in rover.weapon_slots.values():
+                weapon_slot.cooldown -= 1
+                if weapon_slot.cooldown < 0:
+                    weapon_slot.cooldown = 0
         if didTick is False:
             print("(--- NO DAMAGE TICKS THIS TURN. ---)")
 
@@ -191,6 +195,9 @@ class Combat:
         canManeuver = True
         canFight = True
 
+        didManeuver = False
+        didFight = False
+
         exposedSlot = self.getExposedSlot(self.enemyRover)
 
         exposedSlot.health_percent = int((exposedSlot.health / exposedSlot.max_health) * 100)
@@ -223,21 +230,27 @@ class Combat:
 
             if left_slot_healthy_and_armor:
                 self.doEnemyTurning("Left")
+                didManeuver = True
             elif right_slot_healthy_and_armor:
                 self.doEnemyTurning("Right")
+                didManeuver = True
             
 
             elif far_slot_healthy_and_armor:
                 if slotToMyLeft.health_percent >= slotToMyRight.health_percent:
                     self.doEnemyTurning("Left")
+                    didManeuver = True
                 else:
                     self.doEnemyTurning("Right")
+                    didManeuver = True
             else:
                 if weaponSlotExposed:
                     if slotToMyLeft.armor is False:
                         self.doEnemyTurning("Left")
+                        didManeuver = True
                     elif slotToMyRight.armor is False:
                         self.doEnemyTurning("Right")
+                        didManeuver = True
 
         if canFight:
             chosenSlot = None
@@ -245,7 +258,7 @@ class Combat:
             defensive_slots = []
             for weapon_slot in self.enemyRover.weapon_slots.values():
                 front_weapon_and_facing_away = weapon_slot.range == "Front" and self.enemyRover.orientation == "Forward"
-                if weapon_slot.health != 0 and not front_weapon_and_facing_away:
+                if weapon_slot.health != 0 and not front_weapon_and_facing_away and weapon_slot.cooldown == 0:
                     if weapon_slot.weapon_type == "Offensive":
                         offensive_slots.append(weapon_slot)
                     else:
@@ -270,10 +283,14 @@ class Combat:
                     elif len(defensive_slots) > 0:
                         chosenSlot = random.choice(defensive_slots)
             if chosenSlot:
+                didFight = True
                 target = self.getExposedSlot(self.playerRover)
                 if self.isCoreExposed(self.playerRover):
                     target = self.playerRover
                 self.use_slot(chosenSlot, self.enemyRover, target, self.playerRover)
+
+        if not didFight and not didManeuver:
+            print("Enemy Rover Passes!")
         pass               
 
     def hasDots(self, rover):
@@ -292,32 +309,18 @@ class Combat:
         a = input()
 
     def isCoreExposed(self, rover):
-        print(" | " + rover.orientation + " |||| ORIENTATION") 
-        if rover.orientation == "Forward":
-            if rover.armor_slots["Front"].health != 0:
-                return False
-            elif rover.weapon_slots["Front"].health != 0:
-                return False
-             
-        elif rover.orientation == "Left-Exposed":
-            if rover.armor_slots["Left"].health != 0:
-                return False
-            elif rover.weapon_slots["Left"].health != 0:
-                return False
 
-        elif rover.orientation == "Right-Exposed":
-            if rover.armor_slots["Right"].health != 0:
-                return False
-            elif rover.weapon_slots["Right"].health != 0:
-                return False 
-        
-        elif rover.orientation == "Right-Exposed":
-            if rover.armor_slots["Right"].health != 0:
-                return False
-            elif rover.weapon_slots["Right"].health != 0:
-                return False
+        frontVulnerable = (rover.orientation == "Forward") and (rover.armor_slots["Front"].health == 0 and rover.weapon_slots["Front"].health == 0)
+        leftVulnerable = (rover.orientation == "Left-Exposed") and (rover.armor_slots["Left"].health == 0 and rover.weapon_slots["Left"].health == 0)
+        rightVulnerable = (rover.orientation == "Right-Exposed") and (rover.armor_slots["Right"].health == 0 and rover.weapon_slots["Right"].health == 0)
+        rearVulnerable = (rover.orientation == "Rear-Exposed") and (rover.armor_slots["Rear"].health == 0 and rover.weapon_slots["Rear"].health == 0)
 
-        return True 
+        coreVulnerable = frontVulnerable or leftVulnerable or rightVulnerable or rearVulnerable
+
+        if coreVulnerable:
+            return True
+        else:
+            return False
 
     def player_manevuer(self):
         print("###### = FRONT")
@@ -380,8 +383,8 @@ class Combat:
 
     def use_slot(self, weapon_slot, sourceRover, target, targetRover):
         print(sourceRover.name.upper() + " USES " + weapon_slot.name.upper() + "!" + "\n\n")
+        weapon_slot.cooldown = weapon_slot.max_cooldown
         if weapon_slot.weapon_type == "Offensive":
-            
             damage = weapon_slot.generateDamage()
             if "Guarded" in targetRover.modifiers.keys():
                 damage.damage = damage.damage * 0.2
@@ -415,7 +418,7 @@ class Combat:
         for support_type in weapon_slot.damage_type:
                 if support_type == "Cleansing":
                     for slot in rover.armor_slots.values():
-                        slot.dots = {}
+                        slot.dots = []
                     rover.modifiers = {}
                     print("[ ALL DOTS CLEANSED ]")
 
@@ -501,8 +504,9 @@ class Combat:
             if weapon_slot.health == 0:
                 indexText = "OFFLINE"
             elif weapon_slot.range == "Front" and self.playerRover.orientation != "Forward":
-                print(weapon_slot.range, self.playerRover.orientation)
                 indexText = "CANT HIT"
+            elif weapon_slot.cooldown > 0:
+                indexText = "COOLING DOWN"
             else:
                 valid_slots[index] = weapon_slot
             print("[{}] {}".format(indexText, weapon_slot.name))
@@ -554,7 +558,7 @@ class Combat:
             passTXT = ">!P!<"
 
         displayText = """
- /---------------- YOUR TURN ---------------\.
+ /---------------- YOUR TURN ---------------\ 
 |
 |
 | ENEMY ROVER:

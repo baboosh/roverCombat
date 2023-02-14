@@ -17,6 +17,9 @@ class Weapon:
 
         self.dots = []
 
+        self.cooldown = 0
+        self.max_cooldown = 0
+
         self.damage = 0
         self.health = 0
         self.max_health = 0 
@@ -58,6 +61,8 @@ class Weapon:
         self.damage = damage
         self.health = max_health
         self.max_health = max_health
+        self.max_cooldown = random.randint(2, 4)
+        self.damage += self.max_cooldown * (self.damage * 0.1)
         self.health_percent = (self.health / self.max_health * 100)
 
         if self.weapon_type == "Offensive":
@@ -163,6 +168,7 @@ Slot: {}
 Effective Range: {}
 Condition: {}
 Health: {}% ({}/{} HP)
+Cooldown: {} Turns
 
 Gear Type:{}
 Gear Value: {}
@@ -170,7 +176,7 @@ Gear Value: {}
 ----{} 
         
         """.format(self.name, hyphens, self.slot, self.range, self.getCondition(), int(self.health_percent),
-         floor(self.health*10)/10, self.max_health, typeString, self.damage, "-" * 80)
+         floor(self.health*10)/10, self.max_health, self.max_cooldown, typeString, self.damage, "-" * 80)
         return weaponDisplay
 
 
